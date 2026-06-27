@@ -178,7 +178,7 @@ export default function ResultsView({ data, onBack }) {
             >
               <ConfidenceBadge level={after.confidence_level} />
               <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                Threshold: {threshold.toFixed(0)}/100
+                Threshold: {Number(threshold ?? 95).toFixed(0)}/100
               </span>
             </div>
           </div>

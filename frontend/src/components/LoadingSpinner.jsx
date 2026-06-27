@@ -1,22 +1,23 @@
-import { useEffect, useState } from "react";
-
 const PIPELINE_STAGES = [
-  { label: "Uploading file" },
-  { label: "Analyzing data quality" },
-  { label: "Calculating trust score" },
-  { label: "Applying cleanup if required" },
-  { label: "Preparing results" },
+  "Waiting in queue...",
+  "Parsing file...",
+  "Analyzing initial quality...",
+  "Cleaning dataset entries...",
+  "Preparing results...",
 ];
 
-export default function LoadingSpinner() {
-  const [active, setActive] = useState(0);
+export default function LoadingSpinner({ status, progress = 0 }) {
+  let active = PIPELINE_STAGES.indexOf(status);
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      setActive((p) => (p < PIPELINE_STAGES.length - 1 ? p + 1 : p));
-    }, 1100);
-    return () => clearInterval(id);
-  }, []);
+  // Unknown status -> first stage
+  if (active === -1) {
+    active = 0;
+  }
+
+  // When backend is finished
+  if (status === "SUCCESS") {
+    active = PIPELINE_STAGES.length;
+  }
 
   return (
     <div
@@ -32,8 +33,13 @@ export default function LoadingSpinner() {
     >
       <div
         className="glass animate-fade-up"
-        style={{ width: "100%", maxWidth: 620, padding: 24 }}
+        style={{
+          width: "100%",
+          maxWidth: 620,
+          padding: 24,
+        }}
       >
+        {/* Spinner */}
         <div
           style={{
             width: 64,
@@ -46,52 +52,109 @@ export default function LoadingSpinner() {
           }}
         />
 
-        <p style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>
-          Processing dataset
-        </p>
         <p
-          style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 18 }}
+          style={{
+            fontSize: 20,
+            fontWeight: 800,
+            marginBottom: 8,
+          }}
         >
-          {PIPELINE_STAGES[active].label}
+          Processing Dataset
         </p>
 
-        <div style={{ display: "grid", gap: 8, textAlign: "left" }}>
-          {PIPELINE_STAGES.map((stage, index) => (
-            <div
-              key={stage.label}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 13,
-              }}
-            >
-              <span
+        <p
+          style={{
+            color: "var(--text-muted)",
+            fontSize: 13,
+            marginBottom: 20,
+          }}
+        >
+          {status || "Waiting in queue..."}
+        </p>
+
+        {/* Progress Bar */}
+        <div
+          style={{
+            width: "100%",
+            height: 10,
+            background: "#e5e7eb",
+            borderRadius: 10,
+            overflow: "hidden",
+            marginBottom: 8,
+          }}
+        >
+          <div
+            style={{
+              width: `${progress}%`,
+              height: "100%",
+              background: "#6366f1",
+              transition: "width 0.4s ease",
+            }}
+          />
+        </div>
+
+        <p
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: "#6366f1",
+            marginBottom: 20,
+          }}
+        >
+          {progress}% Complete
+        </p>
+
+        {/* Pipeline Stages */}
+        <div
+          style={{
+            display: "grid",
+            gap: 10,
+            textAlign: "left",
+          }}
+        >
+          {PIPELINE_STAGES.map((stage, index) => {
+            const completed = index < active;
+            const current = index === active;
+
+            return (
+              <div
+                key={stage}
                 style={{
-                  width: 18,
-                  textAlign: "center",
-                  color:
-                    index < active
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  fontSize: 14,
+                }}
+              >
+                <span
+                  style={{
+                    width: 18,
+                    textAlign: "center",
+                    color: completed
                       ? "#10b981"
-                      : index === active
-                        ? "#a5b4fc"
-                        : "var(--text-faint)",
-                }}
-              >
-                {index < active ? "✓" : index === active ? "•" : "○"}
-              </span>
-              <span
-                style={{
-                  color:
-                    index <= active
-                      ? "var(--text-primary)"
-                      : "var(--text-muted)",
-                }}
-              >
-                {stage.label}
-              </span>
-            </div>
-          ))}
+                      : current
+                      ? "#6366f1"
+                      : "var(--text-faint)",
+                    fontWeight: 700,
+                  }}
+                >
+                  {completed ? "✓" : current ? "●" : "○"}
+                </span>
+
+                <span
+                  style={{
+                    color:
+                      completed || current
+                        ? "var(--text-primary)"
+                        : "var(--text-muted)",
+                    fontWeight: current ? 600 : 400,
+                  }}
+                >
+                  {stage}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
