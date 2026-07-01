@@ -8,3 +8,8 @@ openpyxl
 celery
 redis
 werkzeug
+langchain
+langchain-community
+sentence-transformers
+chromadb
+ollama

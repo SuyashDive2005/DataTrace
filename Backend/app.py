@@ -15,7 +15,8 @@ from services.processing  import analyze_quality, clean_data
 from services.trust_score import predict_trust_score
 from services.lineage     import save_run, get_all_runs, get_run_by_id
 from services.evaluation  import evaluate_cleaning_accuracy, read_uploaded_dataframe
-from config import TRUST_THRESHOLD, EXPORT_DIR, UPLOAD_DIR
+from rag.assistant import answer_question, index_existing_reports
+from config import TRUST_THRESHOLD, EXPORT_DIR, UPLOAD_DIR, REPORTS_DIR
 
 app = Flask(__name__)
 CORS(app)
@@ -199,6 +200,37 @@ def history_detail(run_id):
         if not run:
             return jsonify({"error": "Run not found"}), 404
         return jsonify({"run": run})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    payload = request.get_json(silent=True) or {}
+    question = (payload.get("question") or "").strip()
+    run_id = payload.get("run_id")
+    filename = (payload.get("filename") or "").strip() or None
+
+    if not question:
+        return jsonify({"error": "question is required"}), 400
+
+    try:
+        run_id = int(run_id) if run_id not in (None, "", "null") else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "run_id must be an integer"}), 400
+
+    try:
+        result = answer_question(question, run_id=run_id, filename=filename)
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/rag/reindex", methods=["POST"])
+def reindex_reports():
+    try:
+        result = index_existing_reports(REPORTS_DIR)
+        return jsonify({"status": "ok", **result})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 

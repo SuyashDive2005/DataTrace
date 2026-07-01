@@ -6,7 +6,8 @@ from celery_app import celery_app
 from services.processing import analyze_quality, clean_data
 from services.trust_score import predict_trust_score
 from services.lineage import save_run
-from config import TRUST_THRESHOLD, EXPORT_DIR
+from config import TRUST_THRESHOLD, EXPORT_DIR, REPORTS_DIR
+from rag.assistant import build_run_report_text, save_and_index_report
 
 
 @celery_app.task(bind=True)
@@ -139,6 +140,29 @@ def run_data_pipeline_task(self, temp_file_path, filename, ext):
         except Exception as exc:
             print(f"[DB Error] {exc}")
 
+        report_path = None
+        try:
+            report_text = build_run_report_text(
+                run_id=run_id,
+                filename=filename,
+                was_cleaned=was_cleaned,
+                threshold=TRUST_THRESHOLD,
+                before_metrics=before_metrics,
+                before_score=before_score,
+                after_metrics=after_metrics,
+                after_score=after_score,
+                confidence_level=confidence,
+                cleaning_report=cleaning_report,
+            )
+            report_path = save_and_index_report(
+                report_text=report_text,
+                run_id=run_id,
+                filename=filename,
+                reports_dir=REPORTS_DIR,
+            )
+        except Exception as exc:
+            print(f"[RAG Error] {exc}")
+
         # ─────────────────────────────────────────────────────────
         # Step 6: Save Cleaned File
         # ─────────────────────────────────────────────────────────
@@ -198,6 +222,7 @@ def run_data_pipeline_task(self, temp_file_path, filename, ext):
                 "importances": after_importances,
                 "std_dev": after_std,
             },
+            "report_path": report_path,
         }
 
     except Exception as exc:
