@@ -13,3 +13,8 @@ langchain-community
 sentence-transformers
 chromadb
 ollama
+llama-index-core
+llama-index-llms-ollama
+llama-index-embeddings-huggingface
+llama-index-vector-stores-chroma
+chromadb

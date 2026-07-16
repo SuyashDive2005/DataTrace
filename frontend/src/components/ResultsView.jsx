@@ -1,3 +1,4 @@
+import { useState } from "react";
 import TrustGauge from "./TrustGauge";
 import ConfidenceBadge from "./ConfidenceBadge";
 
@@ -96,7 +97,13 @@ export default function ResultsView({ data, onBack }) {
     after,
     download_url,
     cleaning_report,
+    run_id,
   } = data;
+  const [question, setQuestion] = useState("");
+  const [chatAnswer, setChatAnswer] = useState("");
+  const [chatSources, setChatSources] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState("");
   const improvement = +(after.trust_score - before.trust_score).toFixed(1);
   const rowsRemoved =
     cleaning_report?.duplicates_removed ??
@@ -129,6 +136,48 @@ export default function ResultsView({ data, onBack }) {
     if (!download_url) return;
     window.open(download_url, "_blank");
   };
+
+  const sendQuestion = async (nextQuestion = question) => {
+    const trimmed = nextQuestion.trim();
+    if (!trimmed || chatLoading) return;
+
+    setChatLoading(true);
+    setChatError("");
+    setChatAnswer("");
+    setChatSources([]);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: trimmed,
+          run_id,
+          filename,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Chat request failed.");
+      }
+
+      setChatAnswer(data.answer || "No answer returned.");
+      setChatSources(data.sources || []);
+      setQuestion(trimmed);
+    } catch (err) {
+      setChatError(err.message || "Chat request failed.");
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const suggestedQuestions = [
+    "Why did the trust score change?",
+    "Which cleaning step removed the most issues?",
+    "Why was any column dropped or altered?",
+  ];
 
   return (
     <div style={{ maxWidth: 980, margin: "0 auto", padding: "30px 20px 70px" }}>
@@ -332,7 +381,106 @@ export default function ResultsView({ data, onBack }) {
           </h2>
           <p
             style={{
-              fontSize: 13,
+      ) : null}
+
+      <div
+        className="glass animate-fade-up delay-300"
+        style={{ padding: 22, marginBottom: 16 }}
+      >
+        <h2 style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
+          Ask the DataTrace assistant
+        </h2>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14 }}>
+          Ask questions about this run and get answers grounded in the saved cleaning report.
+        </p>
+
+        <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+          <input
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Why did my trust score decrease?"
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              borderRadius: 10,
+              border: "1px solid var(--border)",
+              background: "rgba(255,255,255,0.03)",
+              color: "var(--text-primary)",
+              outline: "none",
+            }}
+          />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              className="btn-secondary"
+              onClick={() => sendQuestion()}
+              disabled={chatLoading}
+            >
+              {chatLoading ? "Thinking..." : "Ask assistant"}
+            </button>
+            {suggestedQuestions.map((item) => (
+              <button
+                key={item}
+                className="btn-ghost"
+                onClick={() => sendQuestion(item)}
+                disabled={chatLoading}
+                style={{ fontSize: 12 }}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {chatError && (
+          <p style={{ color: "#fca5a5", fontSize: 13, marginBottom: 10 }}>
+            {chatError}
+          </p>
+        )}
+
+        {chatAnswer && (
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 12,
+              border: "1px solid rgba(96,165,250,0.25)",
+              background: "rgba(59,130,246,0.08)",
+              marginBottom: 10,
+            }}
+          >
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>
+              Assistant response
+            </p>
+            <p style={{ fontSize: 14, lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
+              {chatAnswer}
+            </p>
+          </div>
+        )}
+
+        {chatSources.length > 0 && (
+          <div>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>
+              Sources used
+            </p>
+            <div style={{ display: "grid", gap: 6 }}>
+              {chatSources.map((source, index) => (
+                <div
+                  key={`${source.report_path || index}`}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid var(--border)",
+                    fontSize: 12,
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  {source.filename || "report"}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
               color: "var(--text-muted)",
               marginBottom: 14,
             }}

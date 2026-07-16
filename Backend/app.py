@@ -1,4 +1,3 @@
-import io
 import os
 import sys
 import uuid
@@ -11,8 +10,6 @@ import pandas as pd
 
 from tasks import run_data_pipeline_task
 import werkzeug
-from services.processing  import analyze_quality, clean_data
-from services.trust_score import predict_trust_score
 from services.lineage     import save_run, get_all_runs, get_run_by_id
 from services.evaluation  import evaluate_cleaning_accuracy, read_uploaded_dataframe
 from rag.assistant import answer_question, index_existing_reports
